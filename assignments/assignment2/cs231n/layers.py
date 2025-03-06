@@ -603,7 +603,25 @@ def conv_forward_naive(x, w, b, conv_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    stride, pad = conv_param['stride'], conv_param['pad']
+
+    H_prime = 1 + (H + 2 * pad - HH) // stride
+    W_prime = 1 + (W + 2 * pad - WW) // stride
+
+    out = np.zeros((N, F, H_prime, W_prime))
+
+    x_padded = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), mode='constant', constant_values=0)
+
+    for i in range(H_prime):
+        for j in range(W_prime):
+            x_field = x_padded[:, :, i * stride:(i * stride + HH), j * stride:(j * stride + WW)]
+
+            x_reshaped = x_field.reshape(N, C * HH * WW)
+            w_reshaped = w.reshape(F, C * HH * WW)
+
+            out[:, :, i, j] = np.dot(x_reshaped, w_reshaped.T) + b.reshape(1, -1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -631,7 +649,30 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, F, H_prime, W_prime = dout.shape
+    x, w, b, conv_param = cache
+    stride, pad = conv_param['stride'], conv_param['pad']
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+
+    x_padded = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), mode='constant', constant_values=0)
+    dx_padded = np.zeros_like(x_padded)
+    dw = np.zeros_like(w)
+    db = np.zeros_like(b)
+
+    for i in range(H_prime):
+        for j in range(W_prime):
+            dout_slice = dout[:, :, i, j].reshape(N, F)
+            w_reshaped = w.reshape(F, C * HH * WW)
+
+            dx_padded[:, :, i * stride:(i * stride + HH), j * stride:(j * stride + WW)] += (dout_slice @ w_reshaped).reshape(N, C, HH, WW)
+
+            x_slice = x_padded[:, :, i * stride:(i * stride + HH), j * stride:(j * stride + WW)].reshape(N, C * HH * WW)
+            dw += (dout_slice.T @ x_slice).reshape(F, C, HH, WW)
+
+    dx = dx_padded[:, :, pad:-pad, pad:-pad]
+
+    db = np.sum(dout, axis=(0, 2, 3))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -666,7 +707,19 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    pool_height, pool_width, stride = pool_param['pool_height'], pool_param['pool_width'], pool_param['stride']
+
+    H_prime = 1 + (H - pool_height) // stride
+    W_prime = 1 + (W - pool_width) // stride
+
+    out = np.zeros((N, C, H_prime, W_prime))
+
+    for i in range(H_prime):
+        for j in range(W_prime):
+            x_field = x[:, :, i * stride:(i * stride + pool_height), j * stride:(j * stride + pool_width)]
+
+            out[:, :, i, j] = np.max(x_field, axis=(2,3))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -692,7 +745,23 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H_prime, W_prime = dout.shape
+    x, pool_param = cache
+    N, C, H, W = x.shape
+    pool_height, pool_width, stride = pool_param['pool_height'], pool_param['pool_width'], pool_param['stride']
+
+    dx = np.zeros_like(x)
+    binary = np.zeros_like(x)
+
+    for i in range(H_prime):
+        for j in range(W_prime):
+            x_field = x[:, :, i * stride:(i * stride + pool_height), j * stride:(j * stride + pool_width)]
+
+            x_max = np.max(x_field, axis=(2,3), keepdims=True)
+
+            binary[:, :, i * stride:(i * stride + pool_height), j * stride:(j * stride + pool_width)] = x_field >= x_max
+
+            dx[:, :, i * stride:(i * stride + pool_height), j * stride:(j * stride + pool_width)] = binary[:, :, i * stride:(i * stride + pool_height), j * stride:(j * stride + pool_width)] * dout[:, :, i, j].reshape(N, C, 1, 1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
