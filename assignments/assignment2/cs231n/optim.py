@@ -158,7 +158,7 @@ def adam(w, dw, config=None):
     config["m"] = config["beta1"] * config["m"] + (1 - config["beta1"]) * dw
     config["v"] = config["beta2"] * config["v"] + (1 - config["beta2"]) * dw ** 2
     m_hat = config["m"] / (1 - config["beta1"] ** config["t"])
-    v_hat = config["v"] / (1 - config["beta1"] ** config["t"])
+    v_hat = config["v"] / (1 - config["beta2"] ** config["t"])
     next_w = w - config["learning_rate"] / (np.sqrt(v_hat) + config["epsilon"]) * m_hat
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
