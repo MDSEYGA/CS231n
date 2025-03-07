@@ -70,7 +70,7 @@ class ThreeLayerConvNet(object):
         self.params['W1'] = np.random.randn(F, C, HH, WW) * weight_scale
         self.params['b1'] = np.zeros(F)
 
-        self.params['W2'] = np.random.randn(F * H * W, hidden_dim) * weight_scale
+        self.params['W2'] = np.random.randn(F * H * W // 4, hidden_dim) * weight_scale
         self.params['b2'] = np.zeros(hidden_dim)
 
         self.params['W3'] = np.random.randn(hidden_dim, num_classes) * weight_scale
@@ -140,7 +140,17 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dout = softmax_loss(out, y)
+
+        loss += 0.5 * self.reg * (np.sum(self.params['W1'] ** 2) + np.sum(self.params['W2'] ** 2))
+
+        dout, grads['W3'], grads['b3'] = affine_backward(dout, output_cache)
+        dout, grads['W2'], grads['b2'] = affine_relu_backward(dout, hidden_cache)
+        dout, grads['W1'], grads['b1'] = conv_relu_pool_backward(dout, conv_cache)
+
+        grads['W1'] += self.reg * self.params['W1']
+        grads['W2'] += self.reg * self.params['W2']
+        grads['W3'] += self.reg * self.params['W3']
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
