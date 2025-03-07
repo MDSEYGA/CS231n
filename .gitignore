@@ -2,3 +2,4 @@ __pycache__/
 .vscode/
 im2col_cython.c
 im2col_cython.cp311-win_amd64.pyd
+build/
