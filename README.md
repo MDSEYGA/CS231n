@@ -1,4 +1,3 @@
 # CS231n
 
- Stanford CS231n Assignments
- Without inline questions 
+ Solutions for Stanford CS231n Fall 2024 Assignments Without Inline Questions 
