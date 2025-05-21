@@ -19,7 +19,10 @@ def sim(z_i, z_j):
     # HINT: torch.linalg.norm might be helpful.                                  #
     ##############################################################################
     
-    
+    normed_z_i = z_i / torch.linalg.norm(z_i)
+    normed_z_j = z_j / torch.linalg.norm(z_j)
+    norm_dot_product = normed_z_i @ normed_z_j
+
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -56,7 +59,19 @@ def simclr_loss_naive(out_left, out_right, tau):
         ##############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        def l(i, j):
+            z_i, z_j = out[i], out[j]
+            sum = 0
+
+            for k in range(2 * N):
+                if k != i:
+                    z_k = out[k]
+                    sum += (sim(z_i, z_k) / tau).exp()
+
+            result = -((sim(z_i, z_j) / tau).exp() / sum).log()
+            return result
+        
+        total_loss += l(k, k + N) + l(k + N, k)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
          ##############################################################################
@@ -90,7 +105,10 @@ def sim_positive_pairs(out_left, out_right):
     
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    normed_left = out_left / torch.linalg.norm(out_left, dim=1, keepdim=True)
+    normed_right = out_right / torch.linalg.norm(out_right, dim=1, keepdim=True)
+
+    pos_pairs = (normed_left * normed_right).sum(dim=1, keepdim=True)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
@@ -118,7 +136,8 @@ def compute_sim_matrix(out):
     
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    normed_out = out / torch.linalg.norm(out, dim=1, keepdim=True)
+    sim_matrix = normed_out @ normed_out.T
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
@@ -147,7 +166,7 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     
     # Step 1: Use sim_matrix to compute the denominator value for all augmented samples.
     # Hint: Compute e^{sim / tau} and store into exponential, which should have shape 2N x 2N.
-    exponential = None
+    exponential = (sim_matrix / tau).exp()
     
     # This binary mask zeros out terms where k=i.
     mask = (torch.ones_like(exponential, device=device) - torch.eye(2 * N, device=device)).to(device).bool()
@@ -156,7 +175,7 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     exponential = exponential.masked_select(mask).view(2 * N, -1)  # [2*N, 2*N-1]
     
     # Hint: Compute the denominator values for all augmented samples. This should be a 2N x 1 vector.
-    denom = None
+    denom = exponential.sum(dim=1)
 
     # Step 2: Compute similarity between positive pairs.
     # You can do this in two ways: 
@@ -164,7 +183,9 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     # Option 2: Use sim_positive_pairs().
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    sim1 = sim_positive_pairs(out_left, out_right)
+    sim2 = sim_positive_pairs(out_right, out_left)
+    sim = torch.cat([sim1, sim2], dim=0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
@@ -172,7 +193,7 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     numerator = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    numerator = (sim / tau).exp()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
@@ -180,7 +201,7 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     loss = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    loss = -(numerator / denom).log().mean()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
