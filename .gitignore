@@ -6,3 +6,4 @@ build/
 venv/
 datasets/
 data/
+pretrained_model/
